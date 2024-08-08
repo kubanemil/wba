@@ -12,7 +12,8 @@ pub mod escrow {
     use super::*;
 
     pub fn make(ctx: Context<Make>, seed: u64, amount: u64, receive: u64) -> Result<()> {
-        ctx.accounts.create_escrow(seed, receive, ctx.bumps.escrow)?;
+        ctx.accounts
+            .create_escrow(seed, receive, ctx.bumps.escrow)?;
         ctx.accounts.deposit_to_vault(amount)
     }
 

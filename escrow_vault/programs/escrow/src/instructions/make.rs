@@ -12,18 +12,18 @@ pub struct Make<'info> {
     #[account(mut)]
     maker: Signer<'info>,
     #[account(
-        mint::token_program = token_program // not necessary
+        mint::token_program = token_program
     )]
     mint_a: InterfaceAccount<'info, Mint>,
     #[account(
-        mint::token_program = token_program // not necessary
+        mint::token_program = token_program
     )]
     mint_b: InterfaceAccount<'info, Mint>,
     #[account(
         mut,
         associated_token::mint = mint_a,
         associated_token::authority = maker,
-        associated_token::token_program = token_program // not necessary
+        associated_token::token_program = token_program
     )]
     maker_ata_a: InterfaceAccount<'info, TokenAccount>,
     #[account(
