@@ -50,35 +50,36 @@ pub struct MakeOffer<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn send_offered_tokens_to_vault(
-    context: &Context<MakeOffer>,
-    token_a_offered_amount: u64,
-) -> Result<()> {
-    let transfer_accounts = TransferChecked {
-        from: context.accounts.maker_token_account_a.to_account_info(),
-        mint: context.accounts.token_mint_a.to_account_info(),
-        to: context.accounts.vault.to_account_info(),
-        authority: context.accounts.maker.to_account_info(),
-    };
-    let cpi_context = CpiContext::new(
-        context.accounts.token_program.to_account_info(),
-        transfer_accounts,
-    );
-    transfer_checked(
-        cpi_context,
-        token_a_offered_amount,
-        context.accounts.token_mint_a.decimals,
-    )
-}
+impl<'info> MakeOffer<'info> {
+    pub fn send_offered_tokens_to_vault(&self, token_a_offered_amount: u64) -> Result<()> {
+        let transfer_accounts = TransferChecked {
+            from: self.maker_token_account_a.to_account_info(),
+            mint: self.token_mint_a.to_account_info(),
+            to: self.vault.to_account_info(),
+            authority: self.maker.to_account_info(),
+        };
+        let cpi_context = CpiContext::new(self.token_program.to_account_info(), transfer_accounts);
+        transfer_checked(
+            cpi_context,
+            token_a_offered_amount,
+            self.token_mint_a.decimals,
+        )
+    }
 
-pub fn save_offer(context: Context<MakeOffer>, id: u64, token_b_desired_amount: u64) -> Result<()> {
-    context.accounts.offer.set_inner(Offer {
-        id,
-        maker: context.accounts.maker.key(),
-        token_a: context.accounts.token_mint_a.key(),
-        token_b: context.accounts.token_mint_b.key(),
-        token_b_desired_amount,
-        bump: context.bumps.offer,
-    });
-    Ok(())
+    pub fn save_offer(
+        &mut self,
+        id: u64,
+        token_b_desired_amount: u64,
+        bumps: &MakeOfferBumps,
+    ) -> Result<()> {
+        self.offer.set_inner(Offer {
+            id,
+            maker: self.maker.key(),
+            token_a: self.token_mint_a.key(),
+            token_b: self.token_mint_b.key(),
+            token_b_desired_amount,
+            bump: bumps.offer,
+        });
+        Ok(())
+    }
 }
