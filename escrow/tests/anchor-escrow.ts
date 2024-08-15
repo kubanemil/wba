@@ -12,7 +12,7 @@ describe("anchor-escrow", () => {
     const program = anchor.workspace.escrow as Program<Escrow>;
     it("Initialize the program", async () => {
         const id=new BN(12), tokenA_offered_amount=new BN(12), token_B_desired_amount = new BN(12);
-        const tx = await program.methods
+        const tx = program.methods
             .makeOffer(id, tokenA_offered_amount, token_B_desired_amount)
             // .accounts({})
             // .signers([])
