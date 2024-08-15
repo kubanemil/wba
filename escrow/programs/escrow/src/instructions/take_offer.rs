@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::Offer;
 use anchor_lang::prelude::*;
 use anchor_spl::{
@@ -10,11 +11,13 @@ use anchor_spl::{
 
 #[derive(Accounts)]
 pub struct TakeOffer<'info> {
+    // You can use AccountInfo - it doesn't make any validation or checks for account
+    // Or UncheckedAccount (recommended). It's possible to add custom constraints on them.
     #[account(mut)]
     pub taker: Signer<'info>,
 
     #[account(mut)]
-    pub maker: SystemAccount<'info>,
+    pub maker: SystemAccount<'info>, // checks if account is owned by System Program.
 
     pub token_a: InterfaceAccount<'info, Mint>,
     pub token_b: InterfaceAccount<'info, Mint>,
@@ -43,13 +46,21 @@ pub struct TakeOffer<'info> {
         associated_token::authority = maker,
         associated_token::token_program= token_program
     )]
+    // Box<> allocates account to heap (cheaper) - if accounts are too large
     pub maker_ata_b: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
-        close=maker,
+        close=maker, // will close account at the end of instruction.
         has_one=maker,
-        has_one=token_a,
+        has_one=token_a @ ErrorCode::NoTokenAError,  // offer.token_a.key() == TakeOffer.token_a.key()
+        // `address=other_program::ID` to make sure that account has specific address
+        // `owner=owner_pubkey` - make sures owner of account is specific pubkey/ID
+        // use `constraint=bolean_expression` for custom constraint
+
+        // realloc = NEW_SPACE_IN_BYTES, // to reallocate space (if less space, rent will returned)
+        // realloc::payer = maker,
+        // realloc::zero = false,
         has_one=token_b,
         seeds=[b"offer", maker.key().as_ref(), offer.id.to_le_bytes().as_ref()],
         bump=offer.bump
@@ -64,9 +75,11 @@ pub struct TakeOffer<'info> {
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
 
+    // 3 anchor program types given by Anchor: System, Token, AssociatedToken
+    // If other program, you need to import program type
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token2022>,
-    pub system_program: Program<'info, System>,
+    pub system_program: Program<'info, System>, // Checks that account is executable
 }
 
 impl<'info> TakeOffer<'info> {

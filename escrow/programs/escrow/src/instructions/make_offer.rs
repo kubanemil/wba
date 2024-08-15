@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::{Offer, ANCHOR_DISCRIMINATOR};
 use anchor_lang::prelude::*;
 use anchor_spl::{
@@ -18,7 +19,7 @@ pub struct MakeOffer<'info> {
     pub token_mint_b: InterfaceAccount<'info, Mint>,
 
     #[account(
-        mut,
+        mut @ ErrorCode::ImmutableAccountError, // will be raised, in case if account is not mutable
         associated_token::mint = token_mint_a,
         associated_token::authority = maker,
         associated_token::token_program = token_program
@@ -26,9 +27,14 @@ pub struct MakeOffer<'info> {
     pub maker_token_account_a: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
-        init,
+        init, // need to pay rent-except. To get rent-except: `$ solana rent SPACE_IN_BYTES`
+        // use `rent_except=skip` to pay less for init
+        // you can also use `init-if-needed` if not sure. Add that feature in Cargo.toml
         payer = maker,
         space = ANCHOR_DISCRIMINATOR + Offer::INIT_SPACE,
+        // if seeds specified, account is PDA. If no `init`, than it's other program's PDA
+        // if other program, specify program's id: 
+        // seeds::program = other_program.key()
         seeds = [b"offer", maker.key().as_ref(), id.to_le_bytes().as_ref()],
         bump
         )]
