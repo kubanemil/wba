@@ -1,0 +1,3 @@
+[submodule "culling_game"]
+	path = culling_game
+	url = git@github.com:kubanemil/culling_game_frontend.git
