@@ -1,9 +1,10 @@
 import wallet from "../wba-wallet.json"
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults"
 import { 
-    createMetadataAccountV3, 
-    CreateMetadataAccountV3InstructionAccounts, 
-    CreateMetadataAccountV3InstructionArgs,
+    findMetadataPda,
+    updateMetadataAccountV2,
+    UpdateMetadataAccountV2InstructionAccounts,
+    UpdateMetadataAccountV2InstructionArgs,
     DataV2Args
 } from "@metaplex-foundation/mpl-token-metadata";
 import { createSignerFromKeypair, signerIdentity, publicKey } from "@metaplex-foundation/umi";
@@ -19,31 +20,33 @@ const keypair = umi.eddsa.createKeypairFromSecretKey(new Uint8Array(wallet));
 const signer = createSignerFromKeypair(umi, keypair);
 umi.use(signerIdentity(signer));
 
+
 (async () => {
     try {
+        let metadataId = findMetadataPda(umi, {mint: mintId});
+
         // Start here
-        let accounts: CreateMetadataAccountV3InstructionAccounts = {
-            mint: mintId,
-            mintAuthority: signer,
+        let accounts: UpdateMetadataAccountV2InstructionAccounts = {
+            metadata: metadataId
         }
 
+        // can update data
         let data: DataV2Args = {
-            name: "EmilNFT",
-            symbol: "ENFT",
-            uri: "", // metadata URI
-            sellerFeeBasisPoints: 0,
+            name: "EmilLolToken",
+            symbol: "ELolToken",
+            // don't forget to change name, symbol and image in metadata URI - they are not the same!
+            uri: "https://turquoise-used-shark-708.mypinata.cloud/ipfs/QmbW8HunnGGccHBCfWvchb7GMWwwPqmAtxnu4Hw7JAvJpc", // metadata URI
+            sellerFeeBasisPoints: 10,
             creators: null,
             collection: null,
             uses: null
         }
 
-        let args: CreateMetadataAccountV3InstructionArgs = {
-            data, 
-            isMutable: true,
-            collectionDetails: null
+        let args: UpdateMetadataAccountV2InstructionArgs = {
+            data
         }
 
-        let createMetadataTX = createMetadataAccountV3(
+        let updateMetdataTX = updateMetadataAccountV2(
             umi,
             {
                 ...accounts,
@@ -51,7 +54,7 @@ umi.use(signerIdentity(signer));
             }
         )
 
-        let result = await createMetadataTX.sendAndConfirm(umi);
+        let result = await updateMetdataTX.sendAndConfirm(umi);
         console.log(bs58.encode(result.signature));
     } catch(e) {
         console.error(`Oops, something went wrong: ${e}`)
