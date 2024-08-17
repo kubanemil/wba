@@ -16,14 +16,14 @@ umi.use(mplTokenMetadata())
 const mint = generateSigner(umi);
 
 (async () => {
-    let tx = createNft(umi, {
+    let createNftTX = createNft(umi, {
         mint,
         name: "EmilRug",
         symbol: "ERug",
         uri: "https://arweave.net/peuhn6bKIfWiE_fb0BcIjp7m41cgDAsFcAcBmtdlBJU",
         sellerFeeBasisPoints: percentAmount(25)
     });
-    let result = await tx.sendAndConfirm(umi);
+    let result = await createNftTX.sendAndConfirm(umi);
     const signature = base58.encode(result.signature);
     
     console.log(`Succesfully Minted! Check out your TX here:\nhttps://explorer.solana.com/tx/${signature}?cluster=devnet`)

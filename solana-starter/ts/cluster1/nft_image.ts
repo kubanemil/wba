@@ -21,7 +21,7 @@ umi.use(signerIdentity(signer));
         const generic = createGenericFile(image, "generug.png", {contentType: "image/png"})
         //3. Upload image
         const [myUri] = await umi.uploader.upload([generic]);
-        console.log("Your image URI: ", myUri);
+        console.log("Your image URI: ", myUri); // https://arweave.net/XtVuixeOZjIDGqVL3UyBt8zc96GhlZHqRF--EYQniLg
     }
     catch(error) {
         console.log("Oops.. Something went wrong", error);
