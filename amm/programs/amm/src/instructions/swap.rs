@@ -4,7 +4,12 @@ use crate::{assert_non_zero, assert_not_expired, assert_not_locked};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{transfer, Mint, Token, TokenAccount, Transfer};
-use constant_product_curve::{ConstantProduct, LiquidityPair};
+
+#[derive(Debug)]
+pub enum LiquidityPair {
+    X,
+    Y,
+}
 
 #[derive(Accounts)]
 pub struct Swap<'info> {
@@ -57,30 +62,29 @@ pub struct Swap<'info> {
 }
 
 impl<'info> Swap<'info> {
-    pub fn swap(&mut self, is_x: bool, amount: u64, min: u64, expiration: i64) -> Result<()> {
+    pub fn swap(&mut self, is_x: bool, deposit: u64, min: u64, expiration: i64) -> Result<()> {
         assert_not_locked!(self.config.locked);
         assert_not_expired!(expiration);
-        assert_non_zero!([amount]);
+        assert_non_zero!([deposit]);
 
-        let mut curve = ConstantProduct::init(
-            self.vault_x.amount,
-            self.vault_y.amount,
-            self.vault_x.amount,
-            self.config.fee,
-            None,
-        )
-        .map_err(AmmError::from)?;
-
-        let p = match is_x {
+        let token = match is_x {
             true => LiquidityPair::X,
             false => LiquidityPair::Y,
         };
 
-        let res = curve.swap(p, amount, min).map_err(AmmError::from)?;
+        let (x, y, fee) = (self.vault_x.amount, self.vault_y.amount, self.config.fee);
 
-        assert_non_zero!([res.deposit, res.withdraw]);
-        self.deposit_token(is_x, res.deposit)?;
-        self.withdraw_token(is_x, res.withdraw)?;
+        let deposit2 = deposit * (10_000 - fee as u64) / 10_000;
+        let withdraw = match token {
+            LiquidityPair::X => y - (y * x / x + deposit2),
+            LiquidityPair::Y => x - (x * y / y + deposit),
+        };
+
+        require!(withdraw >= min, AmmError::SlippageExceeded);
+        require!(![deposit, withdraw].contains(&0), AmmError::ZeroBalance);
+
+        self.deposit_token(is_x, deposit)?;
+        self.withdraw_token(is_x, withdraw)?;
         Ok(())
     }
 

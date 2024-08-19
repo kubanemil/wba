@@ -51,7 +51,7 @@ impl<'info> Deposit<'info> {
         max_y: u64,  // Max amount of Y we are willing to deposit
         expiration: i64,
     ) -> Result<()> {
-        require!(self.config.locked == false, AmmError::PoolLocked);
+        require!(!self.config.locked, AmmError::PoolLocked);
         assert_not_expired!(expiration);
         assert_non_zero!([amount, max_x, max_y]);
 
