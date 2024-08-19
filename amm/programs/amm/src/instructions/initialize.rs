@@ -9,42 +9,26 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 pub struct Initialize<'info> {
     #[account(mut)]
     pub initializer: Signer<'info>,
+
     pub mint_x: Account<'info, Mint>,
     pub mint_y: Account<'info, Mint>,
-    #[account(
-        init,
-        seeds = [b"lp", config.key.as_ref()],
-        payer = initializer,
-        bump,
-        mint::decimals = 6,
-        mint::authority = auth
-    )]
+
+    #[account(init, seeds = [b"lp", config.key.as_ref()], payer=initializer, bump, mint::decimals=6, mint::authority=auth)]
     pub mint_lp: Account<'info, Mint>,
-    #[account(
-        init,
-        payer = initializer,
-        associated_token::mint = mint_x,
-        associated_token::authority = auth,
-    )]
+
+    #[account(init, payer=initializer, associated_token::mint=mint_x, associated_token::authority=auth)]
     pub vault_x: Account<'info, TokenAccount>,
-    #[account(
-        init,
-        payer = initializer,
-        associated_token::mint = mint_y,
-        associated_token::authority = auth,
-    )]
+
+    #[account(init, payer=initializer, associated_token::mint=mint_y, associated_token::authority=auth)]
     pub vault_y: Account<'info, TokenAccount>,
+
     /// CHECK: This is safe because it's just used to sign
     #[account(seeds = [b"auth"], bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(
-        init,
-        payer = initializer,
-        seeds = [b"config", seed.to_le_bytes().as_ref()], 
-        bump,
-        space = Config::LEN
-    )]
+
+    #[account( init, payer=initializer, seeds=[b"config", seed.to_le_bytes().as_ref()],  bump, space=Config::LEN)]
     pub config: Account<'info, Config>,
+
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -59,17 +43,19 @@ impl<'info> Initialize<'info> {
         authority: Option<Pubkey>,
     ) -> Result<()> {
         // Don't charge >100.00% as a fee
-        require!(fee <= 10000, AmmError::InvalidFee);
-        self.config.init(
+        require!(fee <= 10_000, AmmError::InvalidFee);
+
+        self.config.set_inner(Config {
             seed,
             authority,
-            self.mint_x.key(),
-            self.mint_y.key(),
+            mint_x: self.mint_x.key(),
+            mint_y: self.mint_y.key(),
             fee,
-            bumps.auth,
-            bumps.config,
-            bumps.mint_lp,
-        );
+            locked: false,
+            auth_bump: bumps.auth,
+            config_bump: bumps.config,
+            lp_bump: bumps.mint_lp,
+        });
         Ok(())
     }
 }

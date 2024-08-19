@@ -1,68 +1,43 @@
 use crate::error::AmmError;
 use crate::state::Config;
-use crate::{assert_non_zero, assert_not_expired, assert_not_locked};
+use crate::{assert_non_zero, assert_not_expired};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{mint_to, transfer, Mint, MintTo, Token, TokenAccount, Transfer};
-use constant_product_curve::ConstantProduct;
 
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
+
     pub mint_x: Box<Account<'info, Mint>>,
     pub mint_y: Box<Account<'info, Mint>>,
-    #[account(
-        mut,
-        seeds = [b"lp", config.key().as_ref()],
-        bump = config.lp_bump
-    )]
+
+    #[account(mut, seeds=[b"lp", config.key().as_ref()], bump=config.lp_bump)]
     pub mint_lp: Box<Account<'info, Mint>>,
-    #[account(
-        mut,
-        associated_token::mint = config.mint_x,
-        associated_token::authority = auth,
-    )]
+
+    #[account(mut, associated_token::mint=config.mint_x, associated_token::authority = auth)]
     pub vault_x: Box<Account<'info, TokenAccount>>,
-    #[account(
-        mut,
-        associated_token::mint = config.mint_y,
-        associated_token::authority = auth,
-    )]
+
+    #[account(mut, associated_token::mint = config.mint_y, associated_token::authority = auth)]
     pub vault_y: Box<Account<'info, TokenAccount>>,
-    #[account(
-        mut,
-        associated_token::mint = config.mint_x,
-        associated_token::authority = user,
-    )]
+
+    #[account(mut, associated_token::mint = config.mint_x, associated_token::authority = user)]
     pub user_x: Box<Account<'info, TokenAccount>>,
-    #[account(
-        mut,
-        associated_token::mint = config.mint_y,
-        associated_token::authority = user,
-    )]
+
+    #[account(mut, associated_token::mint = config.mint_y, associated_token::authority = user)]
     pub user_y: Box<Account<'info, TokenAccount>>,
-    #[account(
-        init_if_needed,
-        payer = user,
-        associated_token::mint = mint_lp,
-        associated_token::authority = user,
-    )]
+
+    #[account(init_if_needed, payer = user, associated_token::mint = mint_lp, associated_token::authority = user)]
     pub user_lp: Box<Account<'info, TokenAccount>>,
 
     /// CHECK: just a pda for signing
     #[account(seeds = [b"auth"], bump = config.auth_bump)]
     pub auth: UncheckedAccount<'info>,
-    #[account(
-        has_one = mint_x,
-        has_one = mint_y,
-        seeds = [
-            b"config",
-            config.seed.to_le_bytes().as_ref()
-        ],
-        bump = config.config_bump,
-    )]
+
+    #[account(has_one = mint_x, has_one = mint_y, seeds = [b"config", config.seed.to_le_bytes().as_ref()], bump = config.config_bump)]
     pub config: Account<'info, Config>,
+
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
@@ -76,7 +51,7 @@ impl<'info> Deposit<'info> {
         max_y: u64,  // Max amount of Y we are willing to deposit
         expiration: i64,
     ) -> Result<()> {
-        assert_not_locked!(self.config.locked);
+        require!(self.config.locked == false, AmmError::PoolLocked);
         assert_not_expired!(expiration);
         assert_non_zero!([amount, max_x, max_y]);
 
@@ -86,15 +61,12 @@ impl<'info> Deposit<'info> {
         {
             true => (max_x, max_y),
             false => {
-                let amounts = ConstantProduct::xy_deposit_amounts_from_l(
-                    self.vault_x.amount,
-                    self.vault_y.amount,
-                    self.mint_lp.supply,
-                    amount,
-                    6,
-                )
-                .map_err(AmmError::from)?;
-                (amounts.x, amounts.y)
+                let precision = 6;
+                let ratio: u64 = (self.mint_lp.supply + amount) * precision / self.mint_lp.supply;
+                let deposit_x = (self.vault_x.amount * ratio / precision) - self.vault_x.amount;
+                let deposit_y = (self.vault_y.amount * ratio / precision) - self.vault_y.amount;
+
+                (deposit_x, deposit_y)
             }
         };
 

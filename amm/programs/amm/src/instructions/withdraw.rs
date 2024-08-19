@@ -4,7 +4,6 @@ use crate::{assert_non_zero, assert_not_expired, assert_not_locked};
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{burn, transfer, Burn, Mint, Token, TokenAccount, Transfer};
-use constant_product_curve::ConstantProduct;
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -81,23 +80,26 @@ impl<'info> Withdraw<'info> {
         assert_not_expired!(expiration);
         assert_non_zero!([amount]);
 
-        let amounts = ConstantProduct::xy_withdraw_amounts_from_l(
+        let precision = 6;
+        let (x, y, lp, a) = (
             self.vault_x.amount,
             self.vault_y.amount,
             self.mint_lp.supply,
             amount,
-            6,
-        )
-        .map_err(AmmError::from)?;
+        );
+
+        let ratio = ((lp - a) * precision) / lp;
+        let withdraw_x = x - (x * ratio / precision);
+        let withdraw_y = y - (y * ratio / precision);
 
         // Check for slippage
         require!(
-            min_x <= amounts.x && min_y <= amounts.y,
+            min_x <= withdraw_x && min_y <= withdraw_y,
             AmmError::SlippageExceeded
         );
 
-        self.withdraw_tokens(true, amounts.x)?;
-        self.withdraw_tokens(false, amounts.y)?;
+        self.withdraw_tokens(true, withdraw_x)?;
+        self.withdraw_tokens(false, withdraw_y)?;
         self.burn_lp_tokens(amount)
     }
 
