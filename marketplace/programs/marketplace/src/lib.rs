@@ -19,4 +19,13 @@ pub mod marketplace {
         ctx.accounts.init(name, fee, &ctx.bumps)?;
         Ok(())
     }
+
+    pub fn list(ctx: Context<List>, price: u64) -> Result<()> {
+        ctx.accounts.list(price, &ctx.bumps)?;
+        ctx.accounts.deposit_nft()
+    }
+
+    pub fn delist(ctx: Context<Delist>) -> Result<()> {
+        ctx.accounts.withdraw_nft()
+    }
 }
