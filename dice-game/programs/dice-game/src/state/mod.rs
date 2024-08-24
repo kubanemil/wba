@@ -11,7 +11,7 @@ pub struct Bet {
 }
 
 impl Bet {
-    pub const LEN: usize = 8 + 32 + 3*8 + 2+1;
+    pub const LEN: usize = 8 + 32 + 3 * 8 + 2 + 1;
 
     pub fn to_slice(&self) -> Vec<u8> {
         let mut s = self.player.to_bytes().to_vec();
