@@ -34,6 +34,7 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
+
 impl<'info> Initialize<'info> {
     pub fn init(
         &mut self,
